@@ -16,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/rs/cors"
 )
 
 type Type string
@@ -127,7 +128,12 @@ func NewApiServer() error {
 
 	r.HandleFunc("/addresses/{address}/claimable", AddressClaimableHandler)
 
-	http.Handle("/", r)
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000", "https://galaxychain.zone"},
+		AllowCredentials: true,
+	})
+
+	http.Handle("/", c.Handler(r))
 
 	if err := http.ListenAndServe(":"+os.Getenv("PORT"), r); err != nil {
 		return err
