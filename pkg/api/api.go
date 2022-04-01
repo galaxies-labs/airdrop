@@ -11,12 +11,12 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/cors"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/cors"
 )
 
 type Type string
@@ -51,6 +51,7 @@ func AddressClaimableHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(response.StatusCode)
 		json.NewEncoder(w).Encode(response)
 	}()
+
 	vars := mux.Vars(r)
 	address := vars["address"]
 
@@ -59,12 +60,16 @@ func AddressClaimableHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("%s has been requested\n", address)
+
 	var prefix string
 
 	if strings.HasPrefix(address, "cosmos") {
 		prefix = "cosmos"
 	} else if strings.HasPrefix(address, "osmo") {
 		prefix = "osmo"
+	} else if strings.HasPrefix(address, "galaxy") {
+		prefix = "galaxy"
 	} else {
 		makeError(&response, "Only Cosmos and Osmosis address can be searched.")
 		return
@@ -79,7 +84,7 @@ func AddressClaimableHandler(w http.ResponseWriter, r *http.Request) {
 
 	pubAddr := hex.EncodeToString(bz)
 
-	fmt.Printf("%s - (%s) has been searched\n", address, pubAddr)
+	fmt.Printf("(%s:%s) - has been searched\n", address, pubAddr)
 
 	db, err := sql.Open("mysql", os.Getenv("MYSQL"))
 	if err != nil {
@@ -122,20 +127,22 @@ func NewApiServer() error {
 		return err
 	}
 
-	fmt.Printf("Starting server at port : %s\n", os.Getenv("PORT"))
+	port := ":" + os.Getenv("PORT")
+
+	fmt.Printf("Starting server at port : %s\n", port)
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/addresses/{address}/claimable", AddressClaimableHandler)
+	r.HandleFunc("/addresses/{address}/claimable", AddressClaimableHandler).Methods("GET")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "https://galaxychain.zone"},
+		AllowedOrigins:   []string{"http://localhost:3000", "https://galaxychain.zone/", "https://galaxychain.zone"},
 		AllowCredentials: true,
 	})
 
-	http.Handle("/", c.Handler(r))
+	handler := c.Handler(r)
 
-	if err := http.ListenAndServe(":"+os.Getenv("PORT"), r); err != nil {
+	if err := http.ListenAndServe(port, handler); err != nil {
 		return err
 	}
 	return nil
