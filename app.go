@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(".env"); err != nil {
-		panic(fmt.Errorf("Can not load .env"))
+	if err := godotenv.Load(); err != nil {
+		panic(fmt.Errorf("can not load .env"))
 	}
 
 	rootCmd := cmd.NewRootCmd()
