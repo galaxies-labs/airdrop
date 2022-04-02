@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -122,6 +123,22 @@ func AddressClaimableHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
+}
+
 func NewApiServer() error {
 	if err := godotenv.Load(".env"); err != nil {
 		return err
@@ -134,6 +151,10 @@ func NewApiServer() error {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/addresses/{address}/claimable", AddressClaimableHandler).Methods("GET")
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "my internal ip address : %v\n", getLocalIP())
+	}).Methods("GET")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000", "https://galaxychain.zone/", "https://galaxychain.zone"},
